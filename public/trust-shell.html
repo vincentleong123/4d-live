@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4dmalaya</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">MALAYA</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/results/">Archive</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src">4dmalaya</span></div>
+  </div>
+</nav>
+<div class="main container page tp-body"><!-- trust page body injected here --></div>
+<script>
+/* contact form submission */
+(function(){
+  var f = document.querySelector('.tp-form');
+  if (!f) return;
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var out = document.getElementById('cOut');
+    if (out) out.textContent = '...';
+    var fd = new FormData(f);
+    var body = {};
+    fd.forEach(function(v,k){ body[k]=v; });
+    fetch('/api/contact', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        out.textContent = j.ok ? (j.msg || 'Terima kasih! Mesej anda telah dihantar. Kami akan balas.')
+                               : (j.error || 'Maaf, mesej gagal dihantar. Cuba lagi.');
+        if (j.ok) f.reset();
+      })
+      .catch(function(){ out.textContent = 'Maaf, mesej gagal dihantar. Cuba lagi nanti.'; });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -12,9 +12,9 @@
 <body>
 <nav class="navbar">
   <div class="container">
-    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <a class="navbar-brand" href="/">4D <span class="gold">MALAYA</span></a>
     <div class="nav-links">
-      <a href="/">Results</a><a href="/history.html" class="active">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+      <a href="/">Results</a><a href="/results/">Archive</a><a href="/history.html" class="active">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
     </div>
     <div class="nav-status"><span class="src" id="hstat">archive</span></div>
   </div>
@@ -83,6 +83,11 @@
   $('#go').onclick = () => load(true);
   $('#more').onclick = () => load(false);
   $('#num').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(true); });
+  /* deep links from the archive pages: /history.html?operator=magnum&number=1063 */
+  const qp = new URLSearchParams(location.search);
+  const qOp = qp.get('operator'), qNum = qp.get('number');
+  if (qOp && [...$('#op').options].some((o) => o.value === qOp)) $('#op').value = qOp;
+  if (qNum && /^\d{1,6}$/.test(qNum)) $('#num').value = qNum;
   load(true);
 })();
 </script>

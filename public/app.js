@@ -4,11 +4,20 @@
 const $ = (sel, root) => (root || document).querySelector(sel);
 const IMG = (n) => `/images/${n}`;
 
+/* tiny DOM builder */
+/* ---------- tiny i18n (Bahasa Malaysia is primary; window.__L__ is injected by the server) --- */
+const L = () => (typeof window !== 'undefined' && window.__L__ && window.__L__.lang === 'ms');
+const T = (s) => {
+  if (!s || typeof s !== 'string' || !window.__L__) return s;
+  const v = window.__L__.t[s];
+  return v === undefined || v === null ? s : v;
+};
+
 /* ---------- tiny DOM builder ---------- */
 function el(tag, cls, html) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
-  if (html != null) n.innerHTML = html;
+  if (html != null) n.innerHTML = L() ? T(String(html)) : html;
   return n;
 }
 function val(v) { return v != null && v !== '' ? v : '&nbsp;'; }
@@ -55,10 +64,29 @@ function headerBlock(c, cardId) {
   rdd.appendChild(document.createTextNode(' '));
   rdd.appendChild(dn);
   nameTd.appendChild(rdd);
+  /* "Cara Main" / "How to play" link — every game card gets its own guide section */
+  const how = HOWTO_URL[cardId];
+  if (how) {
+    const a = el('a', 'card-how', L() ? '❓ Cara main' : '❓ How to play');
+    a.href = (L() ? '/cara-main.html#' : '/en/cara-main.html#') + how;
+    a.title = L() ? 'Panduan cara main untuk permainan ini' : 'How-to-play guide for this game';
+    nameTd.appendChild(a);
+  }
   tr.appendChild(logoTd); tr.appendChild(nameTd);
   t.appendChild(tr);
   return t;
 }
+
+/* cardId → /cara-main.html anchor */
+const HOWTO_URL = {
+  magnum: 'magnum-4d', toto: 'sports-toto-4d', damacai: 'damacai-4d', dragon: 'grand-dragon-4d',
+  sandakan: 'sandakan-4d', sabah88: 'sabah-88-4d', cashsweep: 'cashsweep-4d', sgpools: 'singapore-4d',
+  fireball: 'toto-fireball', toto5d: 'toto-5d', toto6d: 'toto-6d', dmc33: 'damacai-3-3d',
+  mgold: 'magnum-jackpot-gold', life: 'magnum-life', sabahLotto: 'sabah-lotto',
+  sgToto: 'singapore-toto', sabah3d: 'sabah-3d', cs3d: 'sabah-3d', lotto: 'toto-lotto',
+  L6: 'sabah-lotto', L5: 'sabah-lotto',
+  sp0: 'special-draws', sp1: 'special-draws',
+};
 
 function prizes3(cardId, top, zodiac) {
   const t = el('table', 'rtb2');
@@ -569,7 +597,7 @@ function render(data) {
   const banner = $('#nextSpecial');
   if (ns && ns.days <= 14) {
     banner.style.display = 'block';
-    banner.innerHTML = `Next Special Draw: <b>${ns.date}</b> — in ${ns.days} day${ns.days === 1 ? '' : 's'}`;
+    banner.innerHTML = `${T('Next Special Draw:')} <b>${ns.date}</b> — ${L() ? 'dalam ' + ns.days + ' hari' : 'in ' + ns.days + (ns.days === 1 ? ' day' : ' days')}`;
   } else banner.style.display = 'none';
 
   /* Grand Dragon — daily, so it sits at the very bottom */
@@ -589,6 +617,9 @@ function render(data) {
     if (s) s.style.display = c.live ? 'inline' : 'none';
   });
 
+  /* trend strip — hot/cold from the stats lab (real archive data, not invented) */
+  if (typeof loadTrend === 'function') loadTrend();
+
   /* glow + remember */
   document.querySelectorAll('[data-num]').forEach((d) => {
     if (d.dataset.key) glow(d);
@@ -604,32 +635,61 @@ function render(data) {
   s88.className = 'src ' + (data.sources && data.sources.m4d88 === 'ok' ? 'ok' : 'err');
   sMoon.className = 'src ' + (data.sources && data.sources.m4dmoon === 'ok' ? 'ok' : 'err');
   const upd = new Date(data.updatedAt);
-  $('#upd').textContent = (data.stale ? 'STALE ' : 'Updated ') + upd.toLocaleTimeString();
+    $('#upd').textContent = (data.stale ? T('STALE ') : T('Updated ')) + upd.toLocaleTimeString();
   $('#srcLine').textContent = `4d88: ${(data.sources || {}).m4d88 || '?'} · 4dmoon: ${(data.sources || {}).m4dmoon || '?'}`;
-  document.title = (data.cards || []).some((c) => c.live) ? '🔴 4D LIVE — draw in progress' : '4D LIVE — results';
+  document.title = (data.cards || []).some((c) => c.live) ? (L() ? '🔴 4D LIVE — undian sedang berjalan' : '🔴 4D LIVE — draw in progress') : (L() ? '4D LIVE — keputusan' : '4D LIVE — results');
   applyChecker();
+  const ssr = document.querySelector('.ssr');
+  if (ssr) ssr.style.display = 'none';
+}
+
+/* ---------- repeat-visit trend strip: hot/cold from /api/stats ---------- */
+async function loadTrend() {
+  const box = document.getElementById('trend');
+  if (!box) return;
+  try {
+    const st = await (await fetch('/api/stats')).json();
+    const op = (st.operators && (st.operators.toto || st.operators.magnum)) || null;
+    if (!op || !Array.isArray(op.hot) || !Array.isArray(op.cold)) return;
+    const entries = op.hot.slice(0, 8);
+    const cold = op.cold.slice(0, 8);
+    const hotEl = document.querySelector('#trHot .tr-chips');
+    const coldEl = document.querySelector('#trCold .tr-chips');
+    if (hotEl) hotEl.innerHTML = entries.map((x) => `<span class="chip chip-hot">${x.n}</span><em class="tr-count">×${x.count}</em>`).join(' ');
+    if (coldEl) coldEl.innerHTML = cold.map((x) => `<span class="chip chip-cold">${x.n}</span><em class="tr-count">×${x.count}</em>`).join(' ');
+    /* localize the trend headings if the visitor is on the English mirror */
+    if (!L()) {
+      const h2 = box.querySelector('#tr-h');
+      if (h2) h2.innerHTML = 'Hot &amp; cold numbers <span class="tr-sub">from the last 30 draws</span>';
+      const h3s = box.querySelectorAll('h3');
+      if (h3s[0]) h3s[0].textContent = 'Hot numbers';
+      if (h3s[1]) h3s[1].textContent = 'Cold numbers';
+      if (h3s[2]) h3s[2].innerHTML = 'Trends &amp; analysis';
+    }
+    box.style.display = '';
+  } catch { /* offline or stats unbuilt: strip stays hidden */ }
 }
 
 /* ---------- number checker ---------- */
 function tierName(key, src) {
   const slot = (key.split('-')[1] || '').trim();
   const m = slot.match(/^P([123])$/);
-  if (m) return ['1st Prize', '2nd Prize', '3rd Prize'][Number(m[1]) - 1];
+  if (m) return [T('1st Prize'), T('2nd Prize'), T('3rd Prize')][Number(m[1]) - 1];
   const s = slot.match(/^Special(\d+)$/);
-  if (s) return 'Special #' + Number(s[1]);
+  if (s) return T('Special') + ' #' + Number(s[1]);
   const c = slot.match(/^Consolation(\d+)$/);
-  if (c) return 'Consolation #' + Number(c[1]);
+  if (c) return T('Consolation') + ' #' + Number(c[1]);
   const f = slot.match(/^First Prize \( RM 500 \)(\d+)$/);
-  if (f) return 'Fireball 1st (RM 500)';
+  if (f) return T('Fireball 1st (RM 500)');
   const f2 = slot.match(/^Second Prize \( RM 200 \)(\d+)$/);
-  if (f2) return 'Fireball 2nd (RM 200)';
+  if (f2) return T('Fireball 2nd (RM 200)');
   const f3 = slot.match(/^Third Prize \( RM 100 \)(\d+)$/);
-  if (f3) return 'Fireball 3rd (RM 100)';
+  if (f3) return T('Fireball 3rd (RM 100)');
   const sp = slot.match(/^Special \( RM 30 \)(\d+)$/);
-  if (sp) return 'Fireball Special (RM 30)';
+  if (sp) return T('Fireball Special (RM 30)');
   const co = slot.match(/^Consolation \( RM 10 \)(\d+)$/);
-  if (co) return 'Fireball Consolation (RM 10)';
-  return src || slot;
+  if (co) return T('Fireball Consolation (RM 10)');
+  return T(src || slot);
 }
 const CARD_NAMES = {
   dragon: 'Grand Dragon', damacai: 'DaMaCai 1+3D', magnum: 'Magnum', toto: 'SportsToto',
@@ -651,7 +711,7 @@ function applyChecker() {
     }
   });
   if (hits.length) out.innerHTML = '✔ ' + [...new Set(hits)].join(' &nbsp;·&nbsp; ');
-  else out.innerHTML = `<b class="now">${v}</b> — no match in latest results`;
+  else out.innerHTML = `<b class="now">${v}</b> — ${T('no match in latest results')}`;
 }
 
 /* ---------- boot ---------- */
@@ -675,7 +735,7 @@ async function load(spin) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     render(await res.json());
   } catch (e) {
-    $('#srcLine').textContent = 'failed: ' + e.message;
+    $('#srcLine').textContent = 'failed: ' + T(e.message);
   } finally {
     btn.classList.remove('spin');
   }

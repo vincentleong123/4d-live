@@ -35,6 +35,9 @@ const MOON_KEYS = { M: 'magnum', D: 'damacai', G: 'dragon', T: 'toto', K: 'sanda
 
 /* ---------------- helpers ---------------- */
 
+const esc4 = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 async function fetchJSON(url) {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT),
@@ -585,16 +588,59 @@ const MIME = {
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.gif': 'image/gif',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 const PUBLIC = path.join(__dirname, 'public');
+const zlib = require('zlib');
+
+/* gzip text responses when the client accepts it (~4x smaller HTML/XML/CSS) */
+function send(req, res, status, headers, body) {
+  const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body), 'utf8');
+  const type = String(headers['content-type'] || '');
+  const compressible = /^(text\/|application\/(json|xml|javascript|ld\+json))/.test(type);
+  const accepts = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const h = Object.assign({}, headers);
+  if (compressible && accepts && buf.length > 1024) {
+    const gz = zlib.gzipSync(buf, { level: 6 });
+    h['content-encoding'] = 'gzip';
+    h.vary = 'Accept-Encoding';
+    delete h['content-length'];
+    res.writeHead(status, h);
+    res.end(gz);
+    return;
+  }
+  h['content-length'] = buf.length;
+  res.writeHead(status, h);
+  res.end(buf);
+}
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     if (url.pathname === '/api/results') {
       const payload = await loadResults();
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify(payload));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
+      return;
+    }
+
+    if (url.pathname === '/api/contact') {
+      if (req.method !== 'POST') { send(req, res, 405, { 'content-type': 'application/json' }, '{"ok":false,"error":"POST only"}'); return; }
+      const body = await readBody(req);
+      let j = {};
+      try { j = JSON.parse(body || '{}'); } catch { j = {}; }
+      const name = String(j.name || '').trim().slice(0, 120);
+      const email = String(j.email || '').trim().slice(0, 160);
+      const message = String(j.message || '').trim().slice(0, 4000);
+      if (!name || !message || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        send(req, res, 400, { 'content-type': 'application/json' }, JSON.stringify({ ok: false, error: 'Please fill in your name, a valid email and a message.' }));
+        return;
+      }
+      const file = path.join(DATA_DIR, 'messages.json');
+      let arr = [];
+      try { arr = JSON.parse(fs.readFileSync(file, 'utf8')) || []; } catch { arr = []; }
+      arr.push({ at: new Date().toISOString(), name, email, message, ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().slice(0, 60) });
+      try { fs.writeFileSync(file, JSON.stringify(arr, null, 2)); } catch { /* disk error: still ack */ }
+      send(req, res, 200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, JSON.stringify({ ok: true, msg: 'Terima kasih! Mesej anda telah dihantar. Kami baca & balas.' }));
       return;
     }
 
@@ -603,37 +649,43 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST') {
         const body = await readBody(req);
         const out = J.addEntry(JSON.parse(body || '{}'));
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
-        res.end(JSON.stringify({ ok: true, entry: out }));
+        send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }, JSON.stringify({ ok: true, entry: out }));
         return;
       }
       if (req.method === 'DELETE') {
         const id = url.searchParams.get('id') || '';
         const out = J.deleteEntry(id);
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
-        res.end(JSON.stringify({ ok: true, ...out }));
+        send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }, JSON.stringify({ ok: true, ...out }));
         return;
       }
       const payload = J.getJournal();
       // warm the archive in the background (max once / 10 min)
       warmHistory();
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify(payload));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
       return;
     }
 
     if (url.pathname === '/api/stats' || url.pathname === '/api/facts' || url.pathname === '/api/backtest' || url.pathname === '/api/didyouknow') {
       const file = { '/api/stats': 'stats.json', '/api/facts': 'facts.json', '/api/backtest': 'backtest.json', '/api/didyouknow': 'didyouknow.json' }[url.pathname];
       const payload = readJSONFile(file) || { error: 'not built yet — run scripts/build-analytics.js' };
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify(payload));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
+      return;
+    }
+
+    if (url.pathname === '/api/date') {
+      const DP = require('./lib/datepage.js');
+      const iso = (url.searchParams.get('date') || '').trim();
+      const data = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? DP.loadDate(iso) : null;
+      const payload = data
+        ? { ok: true, date: data.iso, operatorCount: data.ops.length, ops: data.ops.map((o) => o.op) }
+        : { ok: false, date: iso };
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
       return;
     }
 
     if (url.pathname === '/api/news') {
       const payload = await loadNews();
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=600', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify(payload));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=600', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
       return;
     }
 
@@ -653,8 +705,7 @@ const server = http.createServer(async (req, res) => {
         }).filter(Boolean);
       }
       const total = draws.length;
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify({ operator: op, total, draws: draws.slice(0, limit), number: num || null }));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' }, JSON.stringify({ operator: op, total, draws: draws.slice(0, limit), number: num || null }));
       return;
     }
 
@@ -664,38 +715,156 @@ const server = http.createServer(async (req, res) => {
       let weights = null;
       try { weights = JSON.parse(url.searchParams.get('weights') || 'null'); } catch { weights = null; }
       const payload = predict(op, date, weights);
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' });
-      res.end(JSON.stringify(payload));
+      send(req, res, 200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' }, JSON.stringify(payload));
       return;
     }
     if (url.pathname === '/robots.txt') {
-      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=86400' });
-      res.end(require('./lib/seo.js').robots());
+      send(req, res, 200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=86400' }, require('./lib/seo.js').robots());
       return;
     }
     if (url.pathname === '/sitemap.xml') {
-      res.writeHead(200, { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=86400' });
-      res.end(require('./lib/seo.js').sitemap());
+      send(req, res, 200, { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=86400' }, require('./lib/seo.js').sitemap());
       return;
     }
-    let file = url.pathname === '/' ? '/index.html' : url.pathname;
+    if (url.pathname === '/sitemap-pages.xml' || url.pathname === '/sitemap-dates.xml') {
+      const SEO = require('./lib/seo.js');
+      send(req, res, 200, { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' }, url.pathname === '/sitemap-pages.xml' ? SEO.sitemapPages() : SEO.sitemapDates());
+      return;
+    }
+
+    /* ---- locale: BM is primary at the root, English lives under /en/ ---- */
+    let locale = 'ms';
+    let pathname = url.pathname;
+    const lm = /^\/en(\/.*)?$/.exec(pathname);
+    if (lm) { locale = 'en'; pathname = lm[1] || '/'; }
+    const isEN = locale === 'en';
+    const pth = (s) => (isEN ? '/en' : '') + s;
+
+    /* ---- trust pages: /tentang, /hubungi, /privasi, /terma, /tanggungjawab, /soalan ---- */
+    const TP = require('./lib/trustpage.js');
+    if (TP.TRUSTPAGES[pathname]) {
+      const SEO = require('./lib/seo.js');
+      const modulo = SEO.UPDATED;
+      const meta = TP.TRUSTPAGES[pathname];
+      const shell = fs.readFileSync(path.join(PUBLIC, 'trust-shell.html'), 'utf8');
+      const p = isEN
+        ? { title: meta.title, desc: meta.desc, h1: meta.h1 }
+        : { title: meta.title, desc: meta.desc, h1: meta.h1 };
+      const trustMeta = isEN && meta.en ? meta.en : p;
+      let html = SEO.inject(shell, pathname, locale, {
+        ...trustMeta, lastmod: modulo,
+        enH1: locale === 'ms' && meta.en ? meta.en.h1 : undefined,
+        breadcrumbs: [
+          { name: isEN ? '4D Malaysia Live' : '4D Malaysia Live', item: isEN ? SEO.SITE + '/en' : SEO.SITE },
+          { name: isEN ? 'Policies & Trust' : 'Polisi & Keyakinan', item: isEN ? SEO.SITE + '/en/tentang.html' : SEO.SITE + '/tentang.html' },
+          { name: trustMeta.h1, item: (isEN ? SEO.SITE + '/en' : SEO.SITE) + pathname },
+        ],
+      });
+      html = html.replace('<!-- trust page body injected here -->', meta.content(locale));
+      send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=1800' }, html);
+      return;
+    }
+
+    /* ---- toman folklore page: /toman.html (+ /en/ mirror) ---- */
+    if (pathname === '/toman.html') {
+      const SEO = require('./lib/seo.js');
+      const TO = require('./lib/toman.js');
+      const shell = fs.readFileSync(path.join(PUBLIC, 'trust-shell.html'), 'utf8');
+      let html = SEO.inject(shell, '/toman.html', locale, {
+        ...TO.META[locale],
+        enH1: locale === 'ms' && TO.META.en ? TO.META.en.h1 : undefined,
+        lastmod: SEO.UPDATED,
+        breadcrumbs: [
+          { name: '4D Malaya', item: locale === 'en' ? SEO.SITE + '/en' : SEO.SITE },
+          { name: TO.META[locale].h1, item: (locale === 'en' ? SEO.SITE + '/en' : SEO.SITE) + '/toman.html' },
+        ],
+      });
+      html = html.replace('<!-- trust page body injected here -->', TO.page(locale));
+      const og = SEO.SITE + '/ikan-toman-4ekor-4d-ramalan.jpg';
+      html = html
+        .replace(/<meta property="og:image"(?::secure_url)? content="[^>]*>/g, (m) => m.replace(/content="[^"]*"/, 'content="' + og + '"'))
+        .replace(/<meta property="og:image:type" content="[^>]*>/, '<meta property="og:image:type" content="image/jpeg">')
+        .replace(/<meta property="og:image:width" content="[^>]*>/, '<meta property="og:image:width" content="1000">')
+        .replace(/<meta property="og:image:height" content="[^>]*>/, '<meta property="og:image:height" content="515">')
+        .replace(/<meta name="twitter:image" content="[^>]*>/, (m) => m.replace(/content="[^"]*"/, 'content="' + og + '"'));
+      send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=1800' }, html);
+      return;
+    }
+
+    /* ---- How-to-Play guide: /cara-main.html (+ /en/ mirror) ---- */
+    if (pathname === '/cara-main.html') {
+      const SEO = require('./lib/seo.js');
+      const HOWTO = require('./lib/howto.js');
+      const shell = fs.readFileSync(path.join(PUBLIC, 'trust-shell.html'), 'utf8');
+      let html = SEO.inject(shell, '/cara-main.html', locale, {
+        ...HOWTO.META[locale],
+        enH1: locale === 'ms' && HOWTO.META.en ? HOWTO.META.en.h1 : undefined,
+        lastmod: SEO.UPDATED,
+        breadcrumbs: [
+          { name: '4D Malaya', item: locale === 'en' ? SEO.SITE + '/en' : SEO.SITE },
+          { name: locale === 'en' ? 'How to Play 4D' : 'Cara Main 4D', item: (locale === 'en' ? SEO.SITE + '/en' : SEO.SITE) + '/cara-main.html' },
+        ],
+      });
+      html = html.replace('<!-- trust page body injected here -->', HOWTO.page(locale));
+      html = html.replace('</head>', HOWTO.faqLd(locale) + '\n</head>');
+      send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=1800' }, html);
+      return;
+    }
+
+    /* ---- per-date archive pages: /results/ and /results/YYYY-MM-DD (BM) + /en/results/* (EN) ---- */
+    const dm = /^\/?(results\/.*)$/.exec(pathname);
+    if (dm) {
+      const DP = require('./lib/datepage.js');
+      const SEO = require('./lib/seo.js');
+      const sub = dm[1];
+      const iso = sub.replace(/^results\/?/, '').replace(/\.html$/, '').replace(/\/$/, '');
+      const shellName = iso ? 'result-date.html' : 'results-index.html';
+      const shell = path.join(PUBLIC, shellName);
+      if (iso) {
+        const data = DP.loadDate(iso);
+        if (!data) {
+          const nearest = DP.listDates().slice(-1)[0];
+          send(req, res, 404, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+            `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>4D Results ${esc4(iso)} — not archived</title>`
+            + `<link rel="canonical" href="${SEO.SITE}/results/"></head><body>`
+            + `<h1>No archived draw for ${esc4(iso)}</h1><p>That date is not in the archive yet. `
+            + (nearest ? `<a href="/results/${nearest}">Latest archived draw: ${esc4(nearest)}</a>. ` : '')
+            + `Browse <a href="/results/">every archived date</a>.</p></body></html>`);
+          return;
+        }
+        const nb = DP.neighbours(data.iso);
+        const tmpl = fs.readFileSync(shell, 'utf8');
+        const dm2 = DP.meta(iso, data, locale);
+        let html = SEO.inject(tmpl, '/results/' + iso, locale, { ...dm2, enH1: DP.meta(iso, data, 'en').h1 });
+        html = html.replace('</head>', DP.ld(data.iso, data, locale) + '\n</head>');
+        html = DP.injectBlock(html, data.iso, data, nb, locale);
+        send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=1800' }, html);
+        return;
+      }
+      if (!DP.listDates().length) { send(req, res, 503, { 'content-type': 'text/plain' }, 'Archive empty'); return; }
+      const tmpl = fs.readFileSync(shell, 'utf8');
+      const html = DP.injectHub(SEO.inject(tmpl, '/results/', locale, { ...DP.hubMeta(locale), enH1: DP.hubMeta('en').h1 }), locale);
+      send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' }, html);
+      return;
+    }
+    let file = pathname === '/' ? '/index.html' : pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
     const full = path.join(PUBLIC, file);
-    if (!full.startsWith(PUBLIC)) { res.writeHead(403).end('Forbidden'); return; }
+    if (!full.startsWith(PUBLIC)) { send(req, res, 403, { 'content-type': 'text/plain' }, 'Forbidden'); return; }
     fs.readFile(full, async (err, data) => {
-      if (err) { res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found'); return; }
+      if (err) { send(req, res, 404, { 'content-type': 'text/plain' }, 'Not found'); return; }
       const ext = path.extname(full).toLowerCase();
       const headers = { 'content-type': MIME[ext] || 'application/octet-stream' };
       if (ext === '.html') {
         const SEO = require('./lib/seo.js');
         const route = file.replace(/\\/g, '/').replace(/^\/index\.html$/, '/');
         let html = data.toString('utf8');
-        html = SEO.inject(html, SEO.PAGES[route] ? route : '/');
-        /* SSR: put the real winning numbers in the initial HTML (home page) */
+        html = SEO.inject(html, route, locale);
+        /* SSR: real winning numbers into the initial HTML (home page, both locales) */
         if (route === '/') {
           try {
             const payload = await loadResults();
-            html = require('./lib/ssr.js').injectResults(html, payload);
+            html = require('./lib/ssr.js').injectResults(html, payload, locale, { home: route === '/' });
           } catch (e) { /* offline: page still renders client-side */ }
         }
         data = Buffer.from(html, 'utf8');
@@ -704,13 +873,16 @@ const server = http.createServer(async (req, res) => {
       } else if (ext === '.png' || ext === '.svg' || ext === '.ico') {
         headers['cache-control'] = 'public, max-age=604800';
       }
-      res.writeHead(200, headers);
-      res.end(data);
+      send(req, res, 200, headers, data);
     });
   } catch (e) {
-    res.writeHead(502, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: String(e.message || e) }));
+    send(req, res, 502, { 'content-type': 'application/json; charset=utf-8' }, JSON.stringify({ error: String(e.message || e) }));
   }
 });
 
 server.listen(PORT, () => console.log(`4D LIVE → http://localhost:${PORT}`));
+
+/* keep the archive fresh without needing a /api/journal visit: capture live feeds hourly
+ * (warmHistory self-throttles to max once / 10 min) — evening draws land on date pages the same night */
+setInterval(() => { try { warmHistory(); } catch { /* offline fine */ } }, 60 * 60 * 1000);
+setTimeout(() => { try { warmHistory(); } catch { /* offline fine */ } }, 60 * 1000);

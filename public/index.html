@@ -12,9 +12,9 @@
 <body>
 <nav class="navbar">
   <div class="container">
-    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <a class="navbar-brand" href="/">4D <span class="gold">MALAYA</span></a>
     <div class="nav-links">
-      <a href="/" class="active">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+      <a href="/" class="active">Results</a><a href="/results/">Archive</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
     </div>
     <div class="nav-status">
       <span class="src" id="src88" title="4d88.asia feed">4d88 <em class="dot"></em></span>
@@ -34,12 +34,14 @@
 </div>
 
 <div class="main container">
+  <h2 class="live-heading">Keputusan 4D terkini <strong>secara langsung</strong> — semua operator<span class="en-sub">Live 4D results right now — every operator</span></h2>
+
   <ul class="nav-tabs" id="tabs">
-    <li data-tab="all" class="active"><a>All</a></li>
-    <li data-tab="west"><a>West Malaysia</a></li>
-    <li data-tab="east"><a>East Malaysia</a></li>
-    <li data-tab="sg"><a>Singapore</a></li>
-    <li data-tab="special"><a>Special Draws</a></li>
+    <li data-tab="all" class="active"><a>Semua</a></li>
+    <li data-tab="west"><a>Malaysia Barat</a></li>
+    <li data-tab="east"><a>Malaysia Timur</a></li>
+    <li data-tab="sg"><a>Singapura</a></li>
+    <li data-tab="special"><a>Undian Khas</a></li>
   </ul>
 
   <div id="nextSpecial" class="alert-special" style="display:none"></div>
@@ -65,9 +67,26 @@
   </div>
 
   <div id="sec-gd" class="sec" data-sec="west gd">
-    <div class="captionH3">Grand Dragon 4D</div>
+    <div class="captionH3">Grand Dragon 4D<span class="en-sub">West Malaysia · Grand Dragon</span></div>
     <div class="grid3" id="gdGrid"></div>
   </div>
+
+  <!-- repeat-visit hook: what the stats say today (data-driven, real archive numbers) -->
+  <section id="trend" class="trend" aria-labelledby="tr-h" style="display:none">
+    <h2 id="tr-h">Nombor panas &amp; sejuk <span class="tr-sub">daripada 30 undian terakhir</span><span class="en-sub">Hot &amp; cold numbers — from the last 30 draws</span></h2>
+    <div class="tr-grid">
+      <div class="tr-col" id="trHot"><h3>Nombor panas<span class="en-sub">Hot numbers</span></h3><div class="tr-chips"></div></div>
+      <div class="tr-col" id="trCold"><h3>Nombor sejuk<span class="en-sub">Cold numbers</span></h3><div class="tr-chips"></div></div>
+      <div class="tr-col tr-links">
+        <h3>Trend &amp; analisis<span class="en-sub">Trends &amp; analysis</span></h3>
+        <ul>
+          <li><a href="/stats.html">Statistik penuh setiap operator →</a></li>
+          <li><a href="/predict.html">Uji ramalan AI Overwatch →</a></li>
+          <li><a href="/results/">Keputusan 167 hari lepas →</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <footer class="footer">
     <div>Merged live from <b>4d88.asia</b> + <b>4dmoon.com</b> · tables/logos follow the classic 4dmoon layout ·

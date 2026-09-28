@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D Results — 4D Malaysia Live</title>
+<meta name="description" content="Full 4D results for a draw date: 1st, 2nd and 3rd prize, special and consolation numbers for every Malaysian and Singapore 4D operator.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355472d'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E4D%3E%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">MALAYA</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/results/" class="active">Archive</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src">archive</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>📜 Draw Date</h2>
+  <p class="sub">Winning numbers for one draw date — 1st, 2nd and 3rd prize, special and consolation numbers for every 4D operator.</p>
+</div>
+<script>
+/* progressive enhancement only: the numbers above are already in the HTML */
+(function () {
+  var m = location.pathname.match(/\/results\/(\d{4}-\d{2}-\d{2})/);
+  if (!m) return;
+  fetch('/api/date?date=' + m[1])
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || !j.ok) return;
+      var s = document.querySelector('.nav-status .src');
+      if (s) s.textContent = j.operatorCount + ' operators';
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>

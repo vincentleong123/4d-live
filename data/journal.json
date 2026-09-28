@@ -1,3 +1,35 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "jmukyv7nqsdun",
+      "createdAt": "2026-09-28T08:09:26.918Z",
+      "drawDate": "2026-09-28",
+      "operator": "magnum",
+      "numbers": [
+        {
+          "num": "5153",
+          "bet": "big",
+          "amount": 1
+        },
+        {
+          "num": "9850",
+          "bet": "big",
+          "amount": 1
+        },
+        {
+          "num": "1009",
+          "bet": "big",
+          "amount": 1
+        },
+        {
+          "num": "5985",
+          "bet": "big",
+          "amount": 1
+        }
+      ],
+      "omen": "dream",
+      "note": "",
+      "source": "journal"
+    }
+  ]
 }
