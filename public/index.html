@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1">
+<title>4D LIVE — Magnum · Toto · DaMaCai · Grand Dragon · Sabah · CashSweep · Singapore</title>
+<meta name="description" content="Live 4D results dashboard — Magnum 4D, SportsToto, DaMaCai, Grand Dragon, Sandakan, Sabah 88, CashSweep, Singapore Pools + all side games.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355472d'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E4D%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/" class="active">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status">
+      <span class="src" id="src88" title="4d88.asia feed">4d88 <em class="dot"></em></span>
+      <span class="src" id="srcMoon" title="4dmoon.com feed">4dmoon <em class="dot"></em></span>
+      <span class="src" id="upd">—</span>
+      <button id="btnRefresh" class="btn-refresh" title="Refresh">⟳</button>
+    </div>
+  </div>
+</nav>
+
+<div class="checker-bar">
+  <div class="container checker">
+    <label for="chk">Check your number:</label>
+    <input id="chk" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 3715" autocomplete="off">
+    <span id="chkOut" class="chk-out"></span>
+  </div>
+</div>
+
+<div class="main container">
+  <ul class="nav-tabs" id="tabs">
+    <li data-tab="all" class="active"><a>All</a></li>
+    <li data-tab="west"><a>West Malaysia</a></li>
+    <li data-tab="east"><a>East Malaysia</a></li>
+    <li data-tab="sg"><a>Singapore</a></li>
+    <li data-tab="special"><a>Special Draws</a></li>
+  </ul>
+
+  <div id="nextSpecial" class="alert-special" style="display:none"></div>
+
+  <div id="sec-west" class="sec" data-sec="west special">
+    <div class="captionH3">West Malaysia</div>
+    <div class="grid3" id="westGrid"></div>
+  </div>
+
+  <div id="sec-east" class="sec" data-sec="east">
+    <div class="captionH3">East Malaysia</div>
+    <div class="grid3" id="eastGrid"></div>
+  </div>
+
+  <div id="sec-sg" class="sec" data-sec="sg">
+    <div class="captionH3">Singapore</div>
+    <div class="grid3" id="sgGrid"></div>
+  </div>
+
+  <div id="sec-special" class="sec" data-sec="special">
+    <div class="captionH3">Special Draws</div>
+    <div class="grid3" id="specialGrid"></div>
+  </div>
+
+  <div id="sec-gd" class="sec" data-sec="west gd">
+    <div class="captionH3">Grand Dragon 4D</div>
+    <div class="grid3" id="gdGrid"></div>
+  </div>
+
+  <footer class="footer">
+    <div>Merged live from <b>4d88.asia</b> + <b>4dmoon.com</b> · tables/logos follow the classic 4dmoon layout ·
+    <span id="srcLine">—</span></div>
+  </footer>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

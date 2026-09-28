@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D LIVE — Prediction Builder + AI Overwatch</title>
+<meta name="description" content="Build 4D predictions from 8 methods: stats, numerology, cosmic, 432Hz, conspiracy, black magic, crystal ball — overseen by the AI ensemble.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355472d'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E4D%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html" class="active">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src" id="pstat">architect</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>🏗 Prediction Builder Architect</h2>
+  <p class="sub">Toggle methods, tune their weights, generate. The <b>AI Overwatch</b> ensemble merges every method by its real backtested hit-rate. For entertainment — the balls remain gloriously random.</p>
+  <div class="toolbar">
+    <select id="op">
+      <option value="magnum">Magnum 4D</option><option value="toto">SportsToto 4D</option>
+      <option value="damacai">DaMaCai 1+3D</option><option value="dragon">Grand Dragon 4D</option>
+      <option value="sandakan">Sandakan 4D</option><option value="sabah88">Sabah 88 4D</option>
+      <option value="cashsweep">Sarawak CashSweep</option><option value="sgpools">Singapore 4D</option>
+    </select>
+    <input id="dt" type="date">
+    <button class="btn-go big" id="go">⚡ GENERATE</button>
+  </div>
+  <div class="card">
+    <h3>Method control deck <small style="font-weight:400;color:#888">(uncheck = excluded · slider = weight)</small></h3>
+    <div class="togglerow" id="deck"></div>
+  </div>
+  <div class="card" id="overwatch" style="border:3px solid #AD0006">
+    <h3>🤖 AI OVERWATCH — ensemble consensus <span id="owconf" style="float:right;color:#AD0006"></span></h3>
+    <div class="pick5" id="owpicks"></div>
+    <div id="owmeta" style="font-size:13px;color:#555"></div>
+    <div class="meter" style="margin-top:8px"><i id="owbar" style="width:0%"></i></div>
+  </div>
+  <h2>Method outputs</h2>
+  <div class="method-grid" id="methods"></div>
+  <h2>🏆 Backtest leaderboard <small style="font-weight:400;font-size:13px">— last 60 draws each, 5 picks vs 23 winners</small></h2>
+  <div class="card"><div id="board" style="overflow-x:auto"></div>
+    <div class="disclaimer">Honesty module: every draw is independent and random. Backtest rates hover near the random baseline (~1.14% per 5-pick ticket). Any method "winning" the leaderboard is luck wearing a lab coat. Play for fun, never chase losses, 18+ only.</div>
+  </div>
+</div>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const META = {
+    hot: ['🔥', 'Stat Lab — HOT'], cold: ['🧊', 'Stat Lab — COLD'], numerology: ['🔢', 'Numerology'],
+    cosmic: ['🌌', 'Cosmic Universe'], hz432: ['🎵', '432Hz Resonance'], conspiracy: ['🕶', 'Conspiracy Desk'],
+    black: ['⛧', 'Black Magic'], crystal: ['🔮', 'Crystal Ball'],
+  };
+  $('#dt').value = new Date().toISOString().slice(0, 10);
+  function buildDeck(methods) {
+    const d = $('#deck');
+    if (d.children.length) return;
+    d.innerHTML = methods.map((m) =>
+      `<label class="on" data-m="${m.id}"><input type="checkbox" checked> ${META[m.id] ? META[m.id][0] : ''} ${m.name} <input type="range" min="0" max="3" step="0.5" value="1" title="weight"></label>`).join('');
+    d.querySelectorAll('label').forEach((l) => l.querySelector('input[type=checkbox]').onchange = (e) => l.classList.toggle('on', e.target.checked));
+  }
+  function weights() {
+    const w = {};
+    document.querySelectorAll('#deck label').forEach((l) => {
+      w[l.dataset.m] = l.querySelector('input[type=checkbox]').checked ? Number(l.querySelector('input[type=range]').value) : 0;
+    });
+    return w;
+  }
+  const OMEN = { hot: 'stats', cold: 'stats', numerology: 'oracle', cosmic: 'oracle', hz432: 'hz432', conspiracy: 'conspiracy', black: 'black', crystal: 'oracle' };
+  async function saveJournal(nums, omen, src, date, op) {
+    if (!nums || !nums.length) return;
+    const body = { drawDate: date, operator: op, omen, source: src, note: 'saved from Predict (' + src + ')', numbers: nums.map((n) => ({ num: String(n).slice(0, 4), bet: 'big', amount: 1 })) };
+    const r = await fetch('/api/journal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const out = await r.json();
+    if (r.ok && out.ok) {
+      const st = out.entry.resolved ? (out.entry.net > 0 ? `hit ${out.entry.numbers.filter((n) => n.status === 'hit').length}, ${out.entry.net > 0 ? '+' : ''}RM${Math.abs(out.entry.net)}` : 'no hit') : 'pending';
+      toast('📓 Saved to journal — ' + st);
+    } else toast('Save failed: ' + (out.error || 'unknown'), true);
+  }
+  let toastT;
+  function toast(text, err) {
+    let t = document.getElementById('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+    t.textContent = text;
+    t.className = 'on' + (err ? ' err' : '');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => { t.className = ''; }, 3200);
+  }
+  async function gen() {
+    const op = $('#op').value, date = $('#dt').value || new Date().toISOString().slice(0, 10);
+    const w = weights();
+    const hasDeck = !!$('#deck').children.length;
+    const url = `/api/predict?operator=${op}&date=${date}${hasDeck ? '&weights=' + encodeURIComponent(JSON.stringify(w)) : ''}`;
+    const p = await (await fetch(url)).json();
+    if (!hasDeck) buildDeck(p.methods);
+    // overwatch
+    $('#owconf').textContent = `confidence ${p.ensemble.confidence}%`;
+    $('#owbar').style.width = p.ensemble.confidence + '%';
+    $('#owpicks').innerHTML = p.ensemble.picks.map((x) =>
+      `<div class="p hot">${x.n}<small>${x.methods.length} method${x.methods.length > 1 ? 's' : ''}: ${x.methods.join(', ')}</small></div>`).join('') || '<p>No consensus.</p>';
+    $('#owmeta').innerHTML = `Target <b>${p.date}</b> · ${p.historyDraws} draws of history · avg method backtest <b>${p.ensemble.avgBacktest}%</b> · agreement <b>${p.ensemble.agreement}</b> methods/pick · random baseline ${p.randomBaseline}% · ${p.moon.emoji} ${p.moon.phase} / ${p.zodiac.emoji} ${p.zodiac.name} / ${p.planet[2]} ${p.planet[0]} day`;
+    // methods
+    $('#methods').innerHTML = p.methods.map((m) =>
+      `<div class="method"><h4>${META[m.id] ? META[m.id][0] + ' ' : ''}${m.name} <button class="jbtn" data-picks="${m.picks.join(',')}" data-omen="${OMEN[m.id] || 'oracle'}" data-src="predict:${m.id}">📓 journal</button></h4>` +
+      `<div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div>` +
+      `<div class="why">${m.why}</div>` +
+      `<div class="conf">confidence ${m.confidence}% · backtest ${m.backtest}% <div class="meter"><i style="width:${Math.min(100, m.backtest * 12)}%"></i></div></div></div>`).join('');
+    // save-to-journal wiring
+    if (p.ensemble.picks.length) {
+      const btn = document.createElement('button');
+      btn.className = 'jbtn ow';
+      btn.textContent = '📓 Save all to journal';
+      btn.onclick = () => saveJournal(p.ensemble.picks.map((x) => x.n), 'oracle', 'predict:overwatch', p.date, op);
+      const host = $('#owpicks').parentElement;
+      if (host && !host.querySelector('.jbtn.ow')) host.appendChild(btn);
+    }
+    document.querySelectorAll('.jbtn[data-picks]').forEach((b) => {
+      b.onclick = () => saveJournal(b.dataset.picks.split(','), b.dataset.omen, b.dataset.src, p.date, op);
+    });
+    // leaderboard
+    if (p.backtest) {
+      const rows = Object.entries(p.backtest.methods).sort((a, b) => b[1] - a[1])
+        .map(([id, rate], i) => `<tr><td>${i + 1}</td><td>${META[id] ? META[id][0] + ' ' + META[id][1] : id}</td><td><b>${rate}%</b></td><td><div class="meter"><i style="width:${Math.min(100, rate * 12)}%"></i></div></td></tr>`).join('');
+      $('#board').innerHTML = `<table class="data"><thead><tr><th>#</th><th>Method</th><th>Hit rate</th><th></th></tr></thead><tbody>${rows}<tr><td>—</td><td>🎲 Pure random (baseline)</td><td><b>${p.randomBaseline}%</b></td><td></td></tr></tbody></table><p class="sub">Tested on last ${p.backtest.tested} draws of ${op}.</p>`;
+    }
+  }
+  $('#go').onclick = gen;
+  $('#op').onchange = gen;
+  gen();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "4d-live",
+  "version": "2.0.0",
+  "description": "4D LIVE — all-games lottery dashboard merged from 4d88.asia + 4dmoon.com, 4dmoon-faithful tables",
+  "main": "server.js",
+  "scripts": { "start": "node server.js", "history": "node scripts/fetch-history.js --days 365", "today": "node scripts/fetch-history.js --today", "analytics": "node scripts/build-analytics.js" }
+}

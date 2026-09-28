@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D LIVE — Ripley's Wow: coincidences, did-you-know, news</title>
+<meta name="description" content="Believe-it-or-not 4D coincidences mined from real draws, did-you-knows, and wow winner news.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a0f00'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E!%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html" class="active">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src">believe it</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>😱 Ripley's Believe It or Not — 4D edition</h2>
+  <p class="sub">Every item below was mined from <b>real draws in our archive</b> — not invented. Dates and operators attached. Believe it… or don't.</p>
+  <div class="toolbar" id="chips">
+    <button class="btn-go" data-t="">All</button>
+    <button class="btn-go" data-t="sync">🌌 Syncs</button>
+    <button class="btn-go" data-t="quad">💥 Quads</button>
+    <button class="btn-go" data-t="echo">📅 Date echoes</button>
+    <button class="btn-go" data-t="repeat">🔁 Repeats</button>
+    <button class="btn-go" data-t="double">🕵 Doubles</button>
+  </div>
+  <div class="wowgrid" id="facts"></div>
+  <h2>💡 Did you know?</h2>
+  <p class="sub">Verified lottery lore — history, prize math, and mechanics of the game.</p>
+  <div class="wowgrid" id="dyk"></div>
+  <h2>📰 News wow moments</h2>
+  <p class="sub">Real winner stories (verified articles) + live lottery headlines from the internet.</p>
+  <div id="news"></div>
+</div>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  let FACTS = [];
+  const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  async function facts(filter) {
+    if (!FACTS.length) FACTS = (await (await fetch('/api/facts')).json()).facts || [];
+    const list = filter ? FACTS.filter((f) => f.type === filter) : FACTS;
+    $('#facts').innerHTML = list.slice(0, 30).map((f) =>
+      `<div class="wowcard"><div class="stars">${stars(f.wow)}</div><h4>${f.icon} ${f.title}</h4><p>${f.detail}</p><div class="meta">${f.date || ''}</div></div>`).join('');
+  }
+  async function dyk() {
+    const d = await (await fetch('/api/didyouknow')).json();
+    $('#dyk').innerHTML = (d.items || []).map((x) =>
+      `<div class="didyou"><div class="stars" style="color:#2ecc71">${stars(x.wow || 3)}</div><h4>${x.title}</h4><p>${x.detail}</p></div>`).join('');
+  }
+  async function news() {
+    const n = await (await fetch('/api/news')).json();
+    const cur = (n.curated || []).map((x) =>
+      `<div class="newsitem"><h4><a href="${x.url}" target="_blank" rel="noopener">🏆 ${x.title}</a></h4><p>${x.detail}</p><div class="meta">${x.source} · ${x.date} · verified article</div></div>`).join('');
+    const live = (n.live || []).slice(0, 6).map((x) =>
+      `<div class="newsitem"><h4><a href="${x.url}" target="_blank" rel="noopener">📡 ${x.title}</a></h4><div class="meta">${x.source} · ${x.date} · live from the internet</div></div>`).join('');
+    $('#news').innerHTML = cur + (live ? `<h2 style="font-size:1.2em">📡 Live from the internet</h2>` + live : '<p class="sub">Live feed offline — curated stories above.</p>');
+  }
+  document.querySelectorAll('#chips button').forEach((b) => b.onclick = () => facts(b.dataset.t));
+  facts(''); dyk(); news();
+})();
+</script>
+</body>
+</html>

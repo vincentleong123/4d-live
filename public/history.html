@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D LIVE — Draw History Archive</title>
+<meta name="description" content="Searchable 4D draw history: Magnum, Toto, DaMaCai, Sabah, CashSweep, Singapore.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355472d'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E4D%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html" class="active">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src" id="hstat">archive</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>📜 Draw History Archive</h2>
+  <p class="sub">One year of curated draws (Sep 2025 → Sep 2026). Browse by operator, or hunt a number: <i>"when did 1234 last appear, and in which tier?"</i></p>
+  <div class="toolbar">
+    <select id="op">
+      <option value="magnum">Magnum 4D</option><option value="toto">SportsToto 4D</option>
+      <option value="damacai">DaMaCai 1+3D</option><option value="dragon">Grand Dragon 4D</option>
+      <option value="sandakan">Sandakan 4D</option><option value="sabah88">Sabah 88 4D</option>
+      <option value="cashsweep">Sarawak CashSweep</option><option value="sgpools">Singapore 4D</option>
+    </select>
+    <input id="num" type="text" inputmode="numeric" maxlength="4" placeholder="search number e.g. 1234" style="width:190px">
+    <button class="btn-go" id="go">Search</button>
+    <span id="count" style="font-size:13px;color:#777"></span>
+  </div>
+  <div class="card"><div id="tbl"></div><div style="margin-top:8px"><button class="btn-go" id="more" style="display:none">Load more</button></div></div>
+</div>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const LIMIT = 30;
+  let cursor = null, shown = 0, exhausted = false;
+  async function fetchBatch(op, num) {
+    const u = `/api/history?operator=${op}&limit=200${cursor ? '&before=' + cursor : ''}${num ? '&number=' + encodeURIComponent(num) : ''}`;
+    const r = await (await fetch(u)).json();
+    if (r.draws.length) cursor = r.draws[r.draws.length - 1].date;
+    else exhausted = true;
+    return r.draws;
+  }
+  function rowHtml(d) {
+    const tiers = d.tiers ? d.tiers.map((t) => `<span class="tier">${t}</span>`).join('') : '';
+    return `<tr class="main"><td>${d.date}</td><td>${d.drawNo || '—'}</td>` +
+      `<td class="num">${d.top[0] || '—'}</td><td class="num">${d.top[1] || '—'}</td><td class="num">${d.top[2] || '—'}</td>` +
+      `<td>${tiers}<a href="javascript:void(0)" class="exp" style="font-size:12px">+details</a></td></tr>` +
+      `<tr class="det" style="display:none"><td colspan="6" style="font-size:12px;color:#555"><b>Special:</b> ${d.special.slice(0, 13).join(' ')}<br><b>Consolation:</b> ${d.consolation.join(' ')}${d.zodiac ? `<br><b>Zodiac:</b> ${d.zodiac}` : ''}</td></tr>`;
+  }
+  function bindExp(root) {
+    root.querySelectorAll('.exp').forEach((a) => a.onclick = () => {
+      const det = a.closest('tr').nextElementSibling;
+      const open = det.style.display !== 'none';
+      det.style.display = open ? 'none' : '';
+      a.textContent = open ? '+details' : '−hide';
+    });
+  }
+  async function load(reset) {
+    const op = $('#op').value, num = $('#num').value.trim();
+    if (reset) { cursor = null; shown = 0; exhausted = false; $('#tbl').innerHTML = ''; }
+    if (!$('#tbl table')) $('#tbl').innerHTML = `<table class="data"><thead><tr><th>Date</th><th>Draw</th><th>1st</th><th>2nd</th><th>3rd</th><th>${num ? 'Hit as' : 'Prizes'}</th></tr></thead><tbody></tbody></table>`;
+    const tb = $('#tbl tbody');
+    let page = [];
+    if (num) { while (page.length < LIMIT && !exhausted) page.push(...await fetchBatch(op, num)); }
+    else if (!exhausted) page = await fetchBatch(op, num);
+    page = page.slice(0, LIMIT);
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = page.map(rowHtml).join('');
+    bindExp(tmp);
+    tb.append(...tmp.children);
+    shown += page.length;
+    if (!page.length && reset) $('#tbl').innerHTML = '<p>No draws found. Try another operator or number.</p>';
+    $('#count').textContent = num ? `${shown} hit(s) for ${num}` : `${shown} latest draws`;
+    $('#more').style.display = (!exhausted && page.length) ? '' : 'none';
+  }
+  $('#go').onclick = () => load(true);
+  $('#more').onclick = () => load(false);
+  $('#num').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(true); });
+  load(true);
+})();
+</script>
+</body>
+</html>

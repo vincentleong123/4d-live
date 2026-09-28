@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D LIVE — The Oracle Zoo</title>
+<meta name="description" content="Crystal ball, numerology, cosmic, 432Hz, conspiracy desk, black magic — six oracles, one dashboard.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111'/%3E%3Ctext x='16' y='22' font-size='15' font-family='Roboto,Arial' font-weight='700' fill='%23b388ff' text-anchor='middle'%3E🔮%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="oracle-dark" style="background:#050505">
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html" class="active">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src">🔮 zoo</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>🔮 The Oracle Zoo</h2>
+  <p class="sub">Six oracles. Zero warranties. Pick an operator and consult them all — or build a serious ticket on the <a href="/predict.html" style="color:#f5c518">Predict</a> page.</p>
+  <div class="toolbar" style="background:#111;border-color:#333">
+    <select id="op" style="background:#222;color:#eee;border-color:#444">
+      <option value="magnum">Magnum 4D</option><option value="toto">SportsToto 4D</option>
+      <option value="damacai">DaMaCai 1+3D</option><option value="dragon">Grand Dragon 4D</option>
+      <option value="sandakan">Sandakan 4D</option><option value="sabah88">Sabah 88 4D</option>
+      <option value="cashsweep">Sarawak CashSweep</option><option value="sgpools">Singapore 4D</option>
+    </select>
+    <input id="dt" type="date" style="background:#222;color:#eee;border-color:#444">
+    <button class="btn-go big" id="go">Consult all oracles</button>
+  </div>
+  <div id="sky" style="font-size:15px;margin-bottom:12px"></div>
+  <div id="modes"></div>
+  <div class="disclaimer" style="background:#111;border-color:#55472d;color:#b89b00">The oracles are performance art. Draws are random; no frequency, moon, hertz, elite cabal or demon can change the odds. 18+ only — play for fun.</div>
+</div>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  $('#dt').value = new Date().toISOString().slice(0, 10);
+  const PANELS = {
+    crystal: (m) => `<div class="mode mode-crystal"><h3>🔮 Crystal Ball</h3><div class="crystalball"></div><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p></div>`,
+    numerology: (m) => `<div class="mode mode-numer"><h3>🔢 Numerology Chamber</h3><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p>${m.flavor && m.flavor.root != null ? `<p><b>Root vibration: ${m.flavor.root}</b> — reduce any date, any name, any plate number to a single digit and the universe starts rhyming.</p>` : ''}</div>`,
+    cosmic: (m, p) => `<div class="mode mode-cosmic"><h3>🌌 Cosmic Universe Terminal</h3><p style="font-size:18px">${p.moon.emoji} ${p.moon.phase} · moon age ${p.moon.age}d &nbsp; ${p.zodiac.emoji} ${p.zodiac.name} &nbsp; ${p.planet[2]} ${p.planet[0]} day</p><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p></div>`,
+    hz432: (m) => `<div class="mode mode-hz"><h3>🎵 432Hz Resonance Chamber ♪</h3><p style="font-size:16px">A = 432Hz · 4+3+2 = <b>9</b> · 432 ÷ 4 = <b>108</b> · φ = 1.618… · A440 − A432 = <b>8Hz</b> (the great detuning)</p><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p></div>`,
+    conspiracy: (m) => `<div class="mode mode-consp"><h3>🕶 Conspiracy Desk <small style="font-weight:400">(this panel is being watched)</small></h3><p>The <span class="redacted">lizard people</span> rigged the <span class="redacted">ball machine</span> with <span class="redacted">magnets</span>. These numbers leaked from a <span class="redacted">basement server</span> — share before they <span class="redacted">delete this page</span>.</p><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p></div>`,
+    black: (m) => `<div class="mode mode-black"><h3>⛧ Black Magic Circle</h3><div class="sigils">⛧ 👁 🕯 🜏 🝮</div><div class="pick5">${m.picks.map((n) => `<div class="p">${n}</div>`).join('')}</div><p>${m.why}</p><p><small>confidence ${m.confidence}% — the dark side is very sure of itself. It is also very wrong, on schedule.</small></p></div>`,
+  };
+  async function consult() {
+    const op = $('#op').value, date = $('#dt').value || new Date().toISOString().slice(0, 10);
+    $('#modes').innerHTML = '<p>Consulting…</p>';
+    const p = await (await fetch(`/api/predict?operator=${op}&date=${date}`)).json();
+    $('#sky').innerHTML = `Target <b>${p.date}</b> · ${p.historyDraws} draws consulted · ${p.moon.emoji} ${p.moon.phase} · ${p.zodiac.emoji} ${p.zodiac.name} · ${p.planet[2]} ${p.planet[0]} day`;
+    const byId = {};
+    p.methods.forEach((m) => (byId[m.id] = m));
+    const order = ['crystal', 'numerology', 'cosmic', 'hz432', 'conspiracy', 'black'];
+    $('#modes').innerHTML = order.map((id) => (PANELS[id] && byId[id] ? PANELS[id](byId[id], p) : '')).join('');
+  }
+  $('#go').onclick = consult;
+  consult();
+})();
+</script>
+</body>
+</html>

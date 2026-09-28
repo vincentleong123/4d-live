@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4D LIVE — Stats Lab</title>
+<meta name="description" content="4D frequency lab: hot/cold numbers, digit heat maps, sums, gaps.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355472d'/%3E%3Ctext x='16' y='22' font-size='13' font-family='Roboto,Arial' font-weight='700' fill='%23FFD700' text-anchor='middle'%3E4D%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html">History</a><a href="/stats.html" class="active">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src" id="sstat">lab</span></div>
+  </div>
+</nav>
+<div class="main container page">
+  <h2>🔬 Stats Lab</h2>
+  <p class="sub" id="range">Frequency intelligence from the curated archive. Hot = appeared most. Cold = silent longest. (The balls have no memory — but patterns are fun.)</p>
+  <div class="toolbar">
+    <select id="op">
+      <option value="magnum">Magnum 4D</option><option value="toto">SportsToto 4D</option>
+      <option value="damacai">DaMaCai 1+3D</option><option value="dragon">Grand Dragon 4D</option>
+      <option value="sandakan">Sandakan 4D</option><option value="sabah88">Sabah 88 4D</option>
+      <option value="cashsweep">Sarawak CashSweep</option><option value="sgpools">Singapore 4D</option>
+    </select>
+    <span id="meta" style="font-size:13px;color:#777"></span>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>🔥 HOT — top 15 most drawn</h3><div id="hot"></div></div>
+    <div class="card"><h3>🧊 COLD — longest silence</h3><div id="cold"></div></div>
+  </div>
+  <div class="card"><h3>🗺 Digit heat map — per position (0–9)</h3><div id="heat" style="overflow-x:auto"></div></div>
+  <div class="grid2">
+    <div class="card"><h3>➕ Digit-sum distribution</h3><div id="sums"></div></div>
+    <div class="card"><h3>⚖ Odd / even balance</h3><div id="oe"></div><h3 style="margin-top:10px">🎰 Draw DNA</h3><div id="dna" style="font-size:13px;color:#555"></div></div>
+  </div>
+</div>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  let S = null;
+  const OPS = { magnum: 'Magnum 4D', toto: 'SportsToto 4D', damacai: 'DaMaCai 1+3D', dragon: 'Grand Dragon 4D', sandakan: 'Sandakan 4D', sabah88: 'Sabah 88 4D', cashsweep: 'Sarawak CashSweep', sgpools: 'Singapore 4D' };
+  async function boot() {
+    S = await (await fetch('/api/stats')).json();
+    $('#range').textContent += ` Generated ${new Date(S.generatedAt).toLocaleString()}.`;
+    render();
+  }
+  function bar(v, max, w) { return `<span class="freqbar" style="width:${Math.max(2, Math.round(v / max * (w || 120)))}px"></span> <small>${v}</small>`; }
+  function render() {
+    const op = $('#op').value, o = S.operators[op];
+    if (!o || !o.draws) { $('#hot').innerHTML = '<p>No data yet for this operator.</p>'; return; }
+    $('#meta').textContent = `${o.draws} draws · ${o.from} → ${o.to} · ${o.uniqueNumbers} unique numbers · repeat-draw rate ${o.repeatRate}%`;
+    const hmax = Math.max(...o.hot.map((x) => x.count), 1);
+    $('#hot').innerHTML = `<table class="data"><thead><tr><th>#</th><th>Number</th><th>Hits</th><th>Last seen</th></tr></thead><tbody>` +
+      o.hot.slice(0, 15).map((x, i) => `<tr><td>${i + 1}</td><td class="num">${x.n}</td><td>${bar(x.count, hmax)}</td><td>${x.last}</td></tr>`).join('') + `</tbody></table>`;
+    const cmax = Math.max(...o.cold.map((x) => x.gap), 1);
+    $('#cold').innerHTML = `<table class="data"><thead><tr><th>#</th><th>Number</th><th>Silent</th><th>Last seen</th></tr></thead><tbody>` +
+      o.cold.slice(0, 15).map((x, i) => `<tr><td>${i + 1}</td><td class="num">${x.n}</td><td>${bar(x.gap, cmax)} days</td><td>${x.last}</td></tr>`).join('') + `</tbody></table>`;
+    // heat
+    let h = `<table class="heat"><tr><th>Pos</th>${[0,1,2,3,4,5,6,7,8,9].map((d) => `<th>${d}</th>`).join('')}</tr>`;
+    o.digitPos.forEach((row, p) => {
+      const mx = Math.max(...row, 1);
+      h += `<tr><th>D${p + 1}</th>` + row.map((v) => `<td style="background:rgba(173,0,6,${(v / mx * 0.55).toFixed(2)})">${v}</td>`).join('') + `</tr>`;
+    });
+    $('#heat').innerHTML = h + `</table><p class="sub">Deeper red = that digit appears more in that position.</p>`;
+    // sums
+    const smax = Math.max(...o.sumDist, 1);
+    let s = '';
+    o.sumDist.forEach((v, sum) => { if (v) s += `<div style="display:flex;gap:6px;align-items:center;font-size:12px"><span style="width:26px">Σ${sum}</span>${bar(v, smax, 180)}</div>`; });
+    $('#sums').innerHTML = s;
+    // odd/even
+    const omax = Math.max(...o.oddEven, 1);
+    $('#oe').innerHTML = o.oddEven.map((v, i) => `<div style="display:flex;gap:6px;align-items:center;font-size:13px"><span style="width:110px">${i} odd / ${4 - i} even</span>${bar(v, omax, 150)}</div>`).join('');
+    $('#dna').innerHTML = `Consecutive-draw repeats: <b>${o.repeatDraws}</b> (${o.repeatRate}%). ` +
+      (op === 'toto' && Object.keys(o.zodiacCounts).length ? `<br>Zodiac roll-call: ${Object.entries(o.zodiacCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([z, c]) => `${z} ×${c}`).join(' · ')}` : '');
+  }
+  $('#op').onchange = render;
+  boot();
+})();
+</script>
+</body>
+</html>

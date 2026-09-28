@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1">
+<title>📓 My Journal — 4D LIVE</title>
+<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">4D <span class="gold">LIVE</span></a>
+    <div class="nav-links">
+      <a href="/">Results</a><a href="/history.html">History</a><a href="/stats.html">Stats Lab</a><a href="/predict.html">Predict</a><a href="/oracle.html">Oracle</a><a href="/wow.html">Wow</a><a href="/journal.html" class="active">📓 Journal</a>
+    </div>
+    <div class="nav-status"><span class="src" id="ctxmini">—</span></div>
+  </div>
+</nav>
+
+<main class="main container page">
+
+  <div class="card jhero">
+    <div class="jh-l">
+      <div class="jh-t">Your numbers. Your omens. Your receipts.</div>
+      <div class="sub" id="ctx">Loading today's energy…</div>
+    </div>
+    <div class="jh-r">
+      <div class="sub">NET</div>
+      <div class="jh-net" id="netVal">RM0</div>
+      <div class="sub" id="netSub">no entries yet</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>✍️ New entry</h3>
+    <div class="jform">
+      <label>Draw date<input type="date" id="fDate"></label>
+      <label>Operator<select id="fOp"></select></label>
+      <label>Numbers <span class="jhint">comma/space separated — 4069, 1234</span><input id="fNums" placeholder="4069, 1234" autocomplete="off"></label>
+      <label>Bet<select id="fBet"><option value="big">Big</option><option value="small">Small</option></select></label>
+      <label>RM each<input type="number" id="fAmt" value="1" min="0.5" step="0.5"></label>
+      <label>Omen / source<select id="fOmen"></select></label>
+      <label class="jwide">Note<textarea id="fNote" rows="2" placeholder="saw 4069 twice in one dream, car plate, birthday…"></textarea></label>
+    </div>
+    <div class="jrow">
+      <button class="btn-go" id="btnSave">Save to journal</button>
+      <button class="btn-go" id="btnRandom">🎲 Random 4</button>
+      <button class="btn-go" id="btnFromCtx">⚡ Today's picks</button>
+      <span class="jmsg" id="msg"></span>
+    </div>
+    <div class="sub">Auto-checked against the real draw archive and costed in RM. Pending entries resolve when the result lands.</div>
+  </div>
+
+  <div class="jgrid6" id="ledger"></div>
+
+  <div class="card" id="omensPanel" hidden>
+    <h3>🕵️ Which omen actually pays?</h3>
+    <div class="det"><table class="jtab" id="omensTable"></table></div>
+    <div class="sub">Omens don't change odds. You asked anyway.</div>
+  </div>
+
+  <div class="card">
+    <h3>📈 Net over time <span class="jhint" id="sparkNote"></span></h3>
+    <div id="spark"></div>
+  </div>
+
+  <div class="card">
+    <h3>📖 Timeline <span class="jhint" id="tlCount"></span></h3>
+    <div id="timeline" class="tl"></div>
+  </div>
+
+  <div class="sub jfoot">Local only · nothing leaves this machine · 18+ · draws are random — never chase losses.</div>
+</main>
+<script src="/journal.js"></script>
+</body>
+</html>
